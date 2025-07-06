@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Connections</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f6f6f0;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      margin-bottom: 10px;
+    }
+
+    #grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(70px, 1fr));
+      gap: 10px;
+      max-width: 400px;
+      width: 100%;
+    }
+
+    .tile {
+      background: #f0f0e9;
+      padding: 15px;
+      text-align: center;
+      border-radius: 8px;
+      border: 2px solid #ccc;
+      font-weight: bold;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.3s, border-color 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 80px;
+    }
+
+    .tile.selected {
+      background: #d4cfc4;
+      border-color: #999;
+    }
+
+    .tile.correct-easy {
+      background: #fff066;
+      border-color: #e6d700;
+    }
+
+    .tile.correct-medium {
+      background: #87cefa;
+      border-color: #4682b4;
+    }
+
+    .tile.correct-hard {
+      background: #dda0dd;
+      border-color: #ba55d3;
+    }
+
+    .tile.correct-veryhard {
+      background: #ffa07a;
+      border-color: #cd5c5c;
+    }
+
+    #message {
+      margin: 20px 0;
+      font-size: 1em;
+      text-align: center;
+      color: #333;
+      padding: 0 10px;
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 20px;
+    }
+
+    button {
+      padding: 10px 16px;
+      font-size: 1em;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      background: white;
+      cursor: pointer;
+    }
+
+    @media (max-width: 500px) {
+      .tile {
+        padding: 12px;
+        font-size: 0.9em;
+      }
+
+      #grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>Connections</h1>
+  <p>Create four groups of four!</p>
+  <div id="grid"></div>
+  <div id="message"></div>
+  <div class="controls">
+    <button onclick="shuffleTiles()">Shuffle</button>
+    <button onclick="deselectAll()">Deselect All</button>
+  </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const originalWords = [
+        { text: "Ubud", group: "Bali", difficulty: "easy" },
+        { text: "Seminyak", group: "Bali", difficulty: "easy" },
+        { text: "Kuta", group: "Bali", difficulty: "easy" },
+        { text: "Legian", group: "Bali", difficulty: "easy" },
+        { text: "Terminal", group: "Airport", difficulty: "medium" },
+        { text: "Departures", group: "Airport", difficulty: "medium" },
+        { text: "Check-in", group: "Airport", difficulty: "medium" },
+        { text: "Gate", group: "Airport", difficulty: "medium" },
+        { text: "Vacation", group: "Holiday", difficulty: "hard" },
+        { text: "Getaway", group: "Holiday", difficulty: "hard" },
+        { text: "Trip", group: "Holiday", difficulty: "hard" },
+        { text: "Holiday", group: "Holiday", difficulty: "hard" },
+        { text: "Wing", group: "Plane", difficulty: "veryhard" },
+        { text: "Cockpit", group: "Plane", difficulty: "veryhard" },
+        { text: "Fuselage", group: "Plane", difficulty: "veryhard" },
+        { text: "Engine", group: "Plane", difficulty: "veryhard" }
+      ];
+
+      let words = [...originalWords];
+      const grid = document.getElementById("grid");
+      const message = document.getElementById("message");
+      const selected = [];
+      const solvedGroups = new Set();
+      const tiles = [];
+
+      function shuffleTiles() {
+        words.sort(() => Math.random() - 0.5);
+        grid.innerHTML = "";
+        tiles.length = 0;
+        words.forEach((word, index) => {
+          const div = document.createElement("div");
+          div.classList.add("tile");
+          div.textContent = word.text;
+          div.dataset.index = index;
+          grid.appendChild(div);
+          tiles.push(div);
+        });
+      }
+
+      function deselectAll() {
+        selected.length = 0;
+        tiles.forEach(t => t.classList.remove("selected"));
+        message.textContent = "";
+      }
+
+      window.shuffleTiles = shuffleTiles;
+      window.deselectAll = deselectAll;
+      shuffleTiles();
+
+      grid.addEventListener("click", (e) => {
+        if (!e.target.classList.contains("tile") || e.target.className.includes("correct")) return;
+        const index = +e.target.dataset.index;
+        const tile = e.target;
+
+        if (selected.includes(index)) {
+          tile.classList.remove("selected");
+          selected.splice(selected.indexOf(index), 1);
+        } else if (selected.length < 4) {
+          tile.classList.add("selected");
+          selected.push(index);
+        }
+
+        if (selected.length === 4) {
+          const group = words[selected[0]].group;
+          const allMatch = selected.every(i => words[i].group === group);
+          if (allMatch && !solvedGroups.has(group)) {
+            const difficulty = words[selected[0]].difficulty;
+            selected.forEach(i => {
+              const t = tiles[i];
+              t.classList.remove("selected");
+              t.classList.add(`correct-${difficulty}`);
+              t.style.pointerEvents = "none";
+              grid.prepend(t);
+            });
+            solvedGroups.add(group);
+            message.textContent = `✔️ Found group: ${group}!`;
+            if (solvedGroups.size === 4) {
+              setTimeout(() => {
+                message.textContent = "🎉 You solved all groups! We're going to BALI! 🌴✈️\n\nI know you were looking forward to eating at Maha and told me not to do anything extravagant... so naturally, I booked us an overseas holiday. 😂\n\nI wanted you to have a special 40th — something fun, sunny, and unforgettable (with or without fine dining). Let’s soak up some hot weather and make up for the trip we missed. ❤️";
+              }, 600);
+            }
+          } else {
+            message.textContent = "❌ Not a correct group. Try again!";
+            selected.forEach(i => tiles[i].classList.remove("selected"));
+          }
+          selected.length = 0;
+        }
+      });
+    });
+  </script>
+</body>
+</html>
